@@ -1,0 +1,78 @@
+---
+title: "Modelo de Previsão do IPCA"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll
+  runtime: shiny
+---
+
+```{r global, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE)
+```
+
+Column {.sidebar data-width=310}
+-------------------------------------
+
+**Visão Geral**
+
+Este painel apresenta os resultados de um Modelo Preditivo voltado para a **inflação da economia brasileira**, mensurada pelo Índice de Preços ao Consumidor Amplo (IPCA) e divulgada pelo Instituto Brasileiro de Geografia e Estatística (IBGE). A abordagem utiliza técnicas avançadas de Machine Learning, implementadas de forma automatizada em `R`, com o objetivo de aprimorar a precisão das previsões.
+
+**Sobre o workflow**:
+
+1) Coleta e tratamento de dados<br>
+2) Verificação de estacionariedade<br>
+3) Tratamento das defasagens<br>
+4) Validação cruzada<br>
+5) Avaliação da acurácia<br>
+6) Previsão fora da amostra<br>
+7) Visualização de resultados<br>
+
+
+**Última atualização**: `r format(Sys.Date(), "%d de %B de %Y")`.
+
+
+
+Column {data-width=700}
+-------------------------------------
+
+### Previsão {.no-title}
+
+```{r, fig.width=11}
+
+grafico_previsao
+```
+
+### Últimos 12 meses {.no-title}
+
+```{r, fig.width=11}
+grafico_12m
+```
+
+### Gráfico de acurácia {.no-title}
+
+```{r, fig.width=11}
+grafico_rmse
+```
+
+
+Column {data-width=475}
+-------------------------------------
+
+### Pontos de previsão {.no-title}
+
+```{r}
+tabela_previsao
+```
+
+### Tabela Versus {.no-title}
+
+```{r}
+tabela_versus
+```
+
+### Tabela de acurácia {.no-title}
+
+```{r}
+tabela_rmse
+```
