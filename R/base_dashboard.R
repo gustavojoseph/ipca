@@ -281,7 +281,7 @@ raw_bcb <- purrr::map(codes_bcb, function(code) {
 # Códigos de coleta
 codes_ipeadata <- metadata |>
   dplyr::filter(fonte == "IPEADATA") |>
-  dplyr::summarise(
+  dplyr::reframe(
     purrr::set_names(x = codigo, nm = acronimo)
   ) |>
   dplyr::pull()
@@ -294,7 +294,7 @@ raw_ipeadata <- ipeadatar::ipeadata(code = codes_ipeadata)
 # Códigos de coleta
 codes_ibge <- metadata |>
   dplyr::filter(fonte == "IBGE") |>
-  dplyr::summarise(
+  dplyr::reframe(
     purrr::set_names(x = codigo, nm = acronimo)
   ) |>
   dplyr::pull()
@@ -310,7 +310,7 @@ raw_ibge <- purrr::map(
 # Códigos de coleta
 codes_google <- metadata |>
   dplyr::filter(fonte == "Google Trends") |>
-  dplyr::summarise(
+  dplyr::reframe(
     purrr::set_names(x = codigo, nm = acronimo)
   ) |>
   dplyr::pull()
@@ -330,7 +330,7 @@ raw_google <- gtrendsR::gtrends(
 # Códigos de coleta
 codes_focus <- metadata |>
   dplyr::filter(fonte == "Focus/BCB") |>
-  dplyr::summarise(
+  dplyr::reframe(
     purrr::set_names(x = codigo, nm = acronimo)
   ) |>
   dplyr::pull()
