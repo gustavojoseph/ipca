@@ -37,6 +37,12 @@ jobs:
           renv::restore()
         shell: Rscript {0}
 
+      - name: Install HDeconometrics from GitHub
+        run: |
+          if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes")
+          remotes::install_github("gabrielrvsc/HDeconometrics")
+        shell: Rscript {0}
+
       - uses: r-lib/actions/setup-pandoc@v2
 
       - name: Update model and knit dashboard
