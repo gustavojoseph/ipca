@@ -22,7 +22,7 @@ library(ggtext)
 library(DT)
 library(rmarkdown)
 library(flexdashboard)
-library(htmltools)
+
 
 #remotes::install_github("gabrielrvsc/HDeconometrics")
 library(HDeconometrics)
@@ -1014,4 +1014,6 @@ rmarkdown::render(
   input       = "./docs/dash_ipca.Rmd",
   output_file = "index.html"
 )
+
+
 

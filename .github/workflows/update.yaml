@@ -41,7 +41,7 @@ jobs:
 
       - name: Update model and knit dashboard
         run: |
-          source("R/dashboard.R")
+          source("R/base_dashboard.R")
         shell: Rscript {0}
 
       - name: Commit results
