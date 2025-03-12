@@ -4,21 +4,21 @@
 
 # PACOTES -----------------------------------------------------------------
 
-library(tidyverse)       
-library(rbcb)    
-library(ipeadatar) 
-library(sidrar)    
-library(gtrendsR)     
-library(tsibble)     
-library(forecast)  
-library(feasts)     
-library(fabletools)  
-library(timetk)     
-library(caret)   
-library(glmnet)   
-library(plotly)       
-library(scales)         
-library(ggtext)     
+library(tidyverse)
+library(rbcb)
+library(ipeadatar)
+library(sidrar)
+library(gtrendsR)
+library(tsibble)
+library(forecast)
+library(feasts)
+library(fabletools)
+library(timetk)
+library(caret)
+library(glmnet)
+library(plotly)
+library(scales)
+library(ggtext)
 library(DT)
 library(rmarkdown)
 library(flexdashboard)
@@ -38,22 +38,22 @@ report_ndiffs2 <- function(
     alpha = 0.05,
     na_rm = TRUE
 ) {
-  
+
   # Garantir que x seja lista de séries
   if (!is.list(x)) x <- list(x)
-  
+
   # Remover NAs se necessário
   if (na_rm) x <- purrr::map(x, stats::na.omit)
-  
+
   # Nomes para variáveis se não existirem
   if (is.null(names(x))) names(x) <- paste0("var", seq_along(x))
-  
+
   # Definir combinações de testes e tipos
   test_grid <- tidyr::expand_grid(
     test = test,
     type = term
   )
-  
+
   # Aplicar testes em cada série
   resultados <- purrr::map_dfr(
     .x = x,
@@ -73,7 +73,7 @@ report_ndiffs2 <- function(
     },
     .id = "variable"
   )
-  
+
   # Calcular o ndiffs mais frequente por série
   resultados <- resultados |>
     dplyr::rowwise() |>
@@ -88,7 +88,7 @@ report_ndiffs2 <- function(
       )
     ) |>
     dplyr::ungroup()
-  
+
   return(resultados)
 }
 
@@ -103,15 +103,15 @@ report_ndiffs2 <- function(
 #'
 #' @examples
 ym_label <- function(x) {
-  
+
   x <- lubridate::as_date(x)
-  
+
   dplyr::if_else(
     is.na(dplyr::lag(x)) | tsibble::yearmonth(dplyr::lag(x)) != tsibble::yearmonth(x),
     paste(lubridate::month(x, label = TRUE), "\n", lubridate::year(x)),
     paste(lubridate::month(x, label = TRUE))
   )
-  
+
 }
 
 #3ª Função
@@ -138,52 +138,52 @@ get_cv_rmse_hdecon <- function (
     horizon     = 12,
     ...
 ) {
-  
-  cv_train_index <- data |> 
-    dplyr::slice(1:(dplyr::n() - horizon)) |> 
-    nrow() |> 
-    seq_len() |> 
+
+  cv_train_index <- data |>
+    dplyr::slice(1:(dplyr::n() - horizon)) |>
+    nrow() |>
+    seq_len() |>
     # function not exported, use with caution!
     tsibble:::stretcher2(.step = step, .init = init_window)
-  
+
   n_fcst <- length(cv_train_index)
-  
+
   point_fcst <- list()
-  
+
   for (i in seq_len(n_fcst)) {
-    
+
     cat(paste0("\nIteration: ", i, "/", n_fcst))
-    
+
     curr_index <- cv_train_index[[i]]
     data_train <- data[curr_index, ]
-    
+
     yy_in <- dplyr::pull(data_train, dplyr::all_of(y_target))
     xx_in <- dplyr::select(data_train, !dplyr::any_of(c(date_col, y_target)))
-    
+
     xx_out <- as.matrix(data[-curr_index, names(xx_in)][1:horizon, ])
-    
+
     if (model == "csr") {
-      
+
       fit_csr <- HDeconometrics::csr(
         x = xx_in,
         y = yy_in,
         ...
       )
-      
+
       fcsts <- predict(object = fit_csr, newdata = xx_out)
-      
+
     } else if (model == "bagging") {
-      
+
       fit_bagging <- HDeconometrics::bagging(
         x = as.matrix(xx_in),
         y = yy_in,
         ...
       )
-      
+
       fcsts <- predict(object = fit_bagging, newdata = xx_out)
-      
+
     } else stop("model must be 'csr' or 'bagging'.")
-    
+
     point_fcst[[i]] <- dplyr::tibble(
       {{ date_col }} := seq.Date(
         from       = max(dplyr::pull(data_train, {{ date_col }})) + months(1),
@@ -192,13 +192,13 @@ get_cv_rmse_hdecon <- function (
       ),
       fcst = fcsts
     )
-    
+
   }
-  
+
   fc <- point_fcst |>
     dplyr::bind_rows(.id = ".id") |>
     dplyr::mutate(model = dplyr::if_else(model == "csr", "csr", "bagging"))
-  
+
   rmse_tbl <- dplyr::left_join(
     x  = fc,
     y  = dplyr::select(data, dplyr::all_of(c(date_col, y_target))),
@@ -211,11 +211,11 @@ get_cv_rmse_hdecon <- function (
       rmse = sqrt(mean((!!rlang::sym(y_target) - fcst)^2, na.rm = TRUE)),
       .groups = "drop"
     )
-  
+
   return(
     list("rmse" = rmse_tbl, "forecasts" = fc)
   )
-  
+
 }
 
 # COLETA DE DADOS ---------------------------------------------------------
@@ -233,29 +233,37 @@ init_date <- lubridate::ymd("2002-12-01")
 # 1. Dados do Banco Central ----
 
 # Códigos de coleta
-codes_bcb <- metadata |>  
-  dplyr::filter(fonte == "BCB") |> 
+codes_bcb <- metadata |>
+  dplyr::filter(fonte == "BCB") |>
   dplyr::reframe(
     purrr::set_names(x = as.numeric(codigo), nm = acronimo)
-  ) |> 
+  ) |>
   dplyr::pull()
 
 
 # Coleta de dados do SGS/BCB
-raw_bcb <- rbcb::get_series(
-  code       = codes_bcb,
-  start_date = init_date,
-  end_date   = lubridate::today()
-)
+raw_bcb <- purrr::map(codes_bcb, function(code) {
+  tryCatch({
+    rbcb::get_series(
+      code       = code,
+      start_date = init_date,
+      end_date   = lubridate::today()
+    )
+  }, error = function(e) {
+    message("Erro ao baixar a série ", code, ": ", e$message)
+    return(NULL)  # Retorna NULL em caso de erro
+  })
+}) |>
+  purrr::discard(is.null)
 
 # 2. Dados do IPEA ----
 
 # Códigos de coleta
-codes_ipeadata <- metadata |> 
-  dplyr::filter(fonte == "IPEADATA") |> 
+codes_ipeadata <- metadata |>
+  dplyr::filter(fonte == "IPEADATA") |>
   dplyr::summarise(
     purrr::set_names(x = codigo, nm = acronimo)
-  ) |> 
+  ) |>
   dplyr::pull()
 
 # Coleta de dados do IPEADATA
@@ -264,11 +272,11 @@ raw_ipeadata <- ipeadatar::ipeadata(code = codes_ipeadata)
 # 3. Dados do IBGE ----
 
 # Códigos de coleta
-codes_ibge <- metadata |> 
-  dplyr::filter(fonte == "IBGE") |> 
+codes_ibge <- metadata |>
+  dplyr::filter(fonte == "IBGE") |>
   dplyr::summarise(
     purrr::set_names(x = codigo, nm = acronimo)
-  ) |> 
+  ) |>
   dplyr::pull()
 
 # Coleta de dados do IBGE
@@ -280,11 +288,11 @@ raw_ibge <- purrr::map(
 # 4. Dados do Google Trends ----
 
 # Códigos de coleta
-codes_google <- metadata |> 
-  dplyr::filter(fonte == "Google Trends") |> 
+codes_google <- metadata |>
+  dplyr::filter(fonte == "Google Trends") |>
   dplyr::summarise(
     purrr::set_names(x = codigo, nm = acronimo)
-  ) |> 
+  ) |>
   dplyr::pull()
 
 
@@ -300,11 +308,11 @@ raw_google <- gtrendsR::gtrends(
 # 5. Dados do Noletim Focus/BCB ----
 
 # Códigos de coleta
-codes_focus <- metadata |> 
-  dplyr::filter(fonte == "Focus/BCB") |> 
+codes_focus <- metadata |>
+  dplyr::filter(fonte == "Focus/BCB") |>
   dplyr::summarise(
     purrr::set_names(x = codigo, nm = acronimo)
-  ) |> 
+  ) |>
   dplyr::pull()
 
 
@@ -325,7 +333,7 @@ readr::write_rds(x = mget(ls(pattern = "raw_")), file = "raw_data.rds")
 df_bcb <- raw_bcb |> purrr::reduce(.f = dplyr::full_join, by = "date")
 
 # Dados do IPEADATA
-df_ipeadata <- raw_ipeadata |> 
+df_ipeadata <- raw_ipeadata |>
   dplyr::select("date", "variable" = "code", "value") |>
   dplyr::left_join(
     y  = dplyr::select(metadata, "codigo", "acronimo"),
@@ -419,13 +427,13 @@ df_ipca <- purrr::reduce(
 # 1. Teste de Estacionariedade ----
 
 # Aplicar testes de estacionariedade
-vars_ndiffs <- df_ipca |> 
-  dplyr::select(-"date") |> 
+vars_ndiffs <- df_ipca |>
+  dplyr::select(-"date") |>
   report_ndiffs2()
 
 
 # Diferenciar séries que são não estacionárias
-df_ipca_diff <- df_ipca |> 
+df_ipca_diff <- df_ipca |>
   dplyr::mutate(dplyr::across(
     .cols = vars_ndiffs$variable[vars_ndiffs$ndiffs > 0 & vars_ndiffs$variable != "ipca"],
     .fns  = ~tsibble::difference(
@@ -467,7 +475,7 @@ yy_ts <- stats::ts(
 seasonal_dummies <- forecast::seasonaldummy(yy_ts)
 
 # Incluindo as dummies na base de dados
-df_ipca_lagged <- df_ipca_lagged |>  
+df_ipca_lagged <- df_ipca_lagged |>
   dplyr::bind_cols(seasonal_dummies)
 
 # VALIDAÇÃO CRUZADA -------------------------------------------------------
@@ -535,7 +543,7 @@ acc_rw <- df_csr |>
   ) |>
   dplyr::group_by(.id) |>
   dplyr::mutate(h = dplyr::row_number()) |>
-  dplyr::group_by(h) |> 
+  dplyr::group_by(h) |>
   dplyr::summarise(
     rw       = sqrt(mean((ipca - ipca_lag1)^2, na.rm = TRUE)),
     .groups  = "drop"
@@ -581,32 +589,32 @@ acc_focus <- df_ipca_lagged |>
 
 # Gerar gráfico de linha do RMSE por horizonte preditivo de cada modelo
 plotly::ggplotly(
-  
+
   dplyr::bind_rows(
     acc_csr$rmse,
     acc_rw,
     acc_focus
-  ) |> 
+  ) |>
     ggplot2::ggplot() +
-    
+
     ggplot2::aes(x = h, y = rmse, color = model) +
-    
+
     scale_x_continuous(n.breaks = 10) +
-    
+
     ggplot2::geom_line() +
-    
-    theme_minimal() +                                   
+
+    theme_minimal() +
     theme(
-      plot.title = element_text(face = "bold"),      
-      plot.title.position = "plot",                  
+      plot.title = element_text(face = "bold"),
+      plot.title.position = "plot",
       plot.caption = element_text(hjust = 0, face = "bold"),
-      plot.caption.position = "plot",            
-      legend.position = "top") +               
-    
-    labs(                                            
-      title    = "Avaliando a Acurácia dos Modelos",     
-      y        = "RMSE",                           
-      x        = NULL,                        
+      plot.caption.position = "plot",
+      legend.position = "top") +
+
+    labs(
+      title    = "Avaliando a Acurácia dos Modelos",
+      y        = "RMSE",
+      x        = NULL,
       color    = "Modelos",
       caption  = NULL)
 )
@@ -699,7 +707,7 @@ previsao <- dplyr::tibble(csr = fcst_csr) |>
 colors <- c(
   "#325d88", # blue
   "#289386", # green
-  "#fc9849", # red 
+  "#fc9849", # red
   "#e8bb4f", # yellow
   "black"
 )
@@ -715,37 +723,37 @@ df_fanchart <- df_ipca_lagged |>
 
 # 1. Gráfico Previsão ----
 grafico_previsao <- df_fanchart |>
-  
+
   ggplot2::ggplot() +
-  
+
   ggplot2::aes(x = date) +
-  
+
   ggplot2::geom_line(
     mapping = ggplot2::aes(y = ipca),
     size    = 2,
     color   = colors[5],
     data    = dplyr::slice_tail(df_ipca_lagged, n = 36)
   ) +
-  
+
   ggplot2::geom_ribbon(
     mapping = ggplot2::aes(ymin = -Inf, ymax = Inf),
     fill    = colors[1],
     alpha   = 0.35,
     data    = dplyr::filter(df_fanchart, date >= max(df_ipca_lagged$date))
   ) +
-  
+
   ggplot2::geom_line(
     mapping = ggplot2::aes(y = csr),
     size    = 2,
     color   = colors[1],
     data    = dplyr::filter(df_fanchart, date >= max(df_ipca_lagged$date))
   ) +
-  
+
   ggplot2::geom_vline(
     xintercept = max(df_ipca_lagged$date),
     linetype   = "dashed"
   ) +
-  
+
   ggplot2::scale_y_continuous(
     n.breaks = 6,
     labels = scales::number_format(
@@ -754,12 +762,12 @@ grafico_previsao <- df_fanchart |>
       decimal.mark = ","
     )
   ) +
-  
+
   ggplot2::scale_x_date(
     breaks = scales::breaks_width("4 months"),
     labels = ym_label
   ) +
-  
+
   ggplot2::theme_light() +
   ggplot2::labs(
     title    = "Previsão para os próximos 12 meses",
@@ -768,7 +776,7 @@ grafico_previsao <- df_fanchart |>
     x        = NULL,
     caption  = "**Modelo:** Complete Subset Regression - CSR"
   ) +
-  
+
   ggplot2::theme(
     plot.title       = ggtext::element_markdown(size = 20, colour = colors[1]),
     plot.subtitle    = ggtext::element_markdown(size = 14),
@@ -790,7 +798,7 @@ acc_rmse <- dplyr::bind_rows(
   acc_csr$rmse,
   acc_rw,
   acc_focus
-) |> 
+) |>
   dplyr::mutate(
     model = dplyr::recode(
       model,
@@ -798,13 +806,13 @@ acc_rmse <- dplyr::bind_rows(
       "rw"       = "Random Walk",
       "focus"    = "Focus"
     )
-  ) |> 
-  dplyr::arrange(h, rmse, model) |> 
+  ) |>
+  dplyr::arrange(h, rmse, model) |>
   dplyr::select("Horizonte" = "h", "Modelo" = "model", "RMSE" = "rmse")
 
 
 # Gráfico do RMSE por horizonte de previsão
-grafico_rmse <- acc_rmse |> 
+grafico_rmse <- acc_rmse |>
   ggplot2::ggplot(
     ggplot2::aes(x = Horizonte, y = RMSE, colour = Modelo)
   ) +
@@ -864,54 +872,54 @@ tabela_focus <- df_ipca_lagged |>
   dplyr::mutate(
     h     = as.integer(stringr::str_remove(h, "expectativa_ipca_h_")),
     model = "focus"
-  ) |> 
-  dplyr::filter( h == 1) |> 
+  ) |>
+  dplyr::filter( h == 1) |>
   dplyr:: mutate(date  = date,
                  IPCA  = ipca,
                  Focus = round(lag(focus), 2),
-                 .keep = "none") |> 
+                 .keep = "none") |>
   dplyr::arrange(desc(date))
 
 
 tabela_modelo <- df_csr_t1 |>
   dplyr::mutate(date   = date,
                 Modelo = round(lag(csr), 2),
-                .keep  = "none") |> 
+                .keep  = "none") |>
   dplyr::arrange(desc(date))
 
 # Gráfico
-grafico_12m <- tabela_focus |> 
+grafico_12m <- tabela_focus |>
   dplyr::left_join(y = tabela_modelo,
-                   by = "date") |> 
-  tidyr::drop_na() |> 
+                   by = "date") |>
+  tidyr::drop_na() |>
   dplyr::mutate(Data   = date,
                 IPCA   = IPCA,
                 Focus  = Focus,
                 Modelo = Modelo,
                 .keep  = "none"
   ) |>
-  dplyr::select(4,1,3,2) |> 
+  dplyr::select(4,1,3,2) |>
   tidyr::pivot_longer(
     cols      = 2:4,
     names_to  = "Modelo",
     values_to = "Valor"
   ) |>
-  head(36) |> 
-  
+  head(36) |>
+
   ggplot2::ggplot() +
-  
+
   ggplot2::aes(x = Data, y = Valor, colour = Modelo) +
-  
+
   ggplot2::geom_line(size = 1.5) +
-  
+
   ggplot2::geom_point(size = 3) +
-  
+
   ggplot2::scale_colour_manual(values = c(
     "Modelo" = colors[1],
     "IPCA"   = colors[5],
     "Focus"  = colors[2])
   ) +
-  
+
   ggplot2::scale_y_continuous(
     n.breaks = 6,
     labels   = scales::number_format(
@@ -919,14 +927,14 @@ grafico_12m <- tabela_focus |>
       accuracy     = 0.1,
       decimal.mark = ","
     )) +
-  
+
   ggplot2::scale_x_date(
     breaks = scales::breaks_width("1 months"),
     labels = ym_label
   ) +
-  
+
   ggplot2::theme_light() +
-  
+
   ggplot2::labs(
     title    = "Análise dos últimos 12 meses",
     subtitle = "Comparação do IPCA, Previsão do Modelo e Expectativa de Mercado",
@@ -935,7 +943,7 @@ grafico_12m <- tabela_focus |>
     color    = NULL,
     caption  = NULL
   ) +
-  
+
   ggplot2::theme(
     plot.title       = ggtext::element_markdown(size = 20, colour = colors[1]),
     plot.subtitle    = ggtext::element_markdown(size = 14),
@@ -951,7 +959,7 @@ grafico_12m <- tabela_focus |>
       margin = ggplot2::margin(10, 5.5, 10, 5.5)
     )
   )
-  
+
 # 4. Tabelas ----
 
 # Tabela de pontos de previsão
@@ -969,7 +977,7 @@ tabela_previsao <- df_fanchart |>
 
 # Tabela com valores do RMSE vs. horizonte/modelos
 tabela_rmse <- acc_rmse |>
-  dplyr::mutate(Horizonte = as.character(Horizonte)) |> 
+  dplyr::mutate(Horizonte = as.character(Horizonte)) |>
   DT::datatable(
     options = list(dom = "tip", pageLength = 10, scrollX = TRUE, scrollY = TRUE),
     rownames = FALSE
@@ -977,24 +985,24 @@ tabela_rmse <- acc_rmse |>
   DT::formatRound(columns = 3, digits = 2, dec.mark = ",", mark = ".")
 
 # Tabelas Modelo x Focus
-tabela_versus <- tabela_focus |> 
+tabela_versus <- tabela_focus |>
   dplyr::left_join(y = tabela_modelo,
-                  by = "date") |> 
-  tidyr::drop_na() |> 
+                  by = "date") |>
+  tidyr::drop_na() |>
   dplyr::mutate(Data   = lubridate::as_date(date) |> format("%b/%Y"),
                 IPCA   = IPCA,
                 Focus  = Focus,
                 Modelo = Modelo,
                 .keep  = "none"
   ) |>
-  dplyr::select(4,1,3,2) |> 
+  dplyr::select(4,1,3,2) |>
   DT::datatable(
     options = list(dom = "tip", pageLength = 10, scrollX = TRUE, scrollY = TRUE),
     rownames = FALSE
   ) |>
   DT::formatRound(columns = 2, digits = 2, dec.mark = ",", mark = ".") |>
   DT::formatStyle(columns = 2, fontWeight = "bold")
-                
+
 
 # Dashboard ---------------------------------------------------------------
 
