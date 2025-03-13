@@ -25,24 +25,24 @@ library(flexdashboard)
 
 # Pacotes secundários
 
-library(bit)
-library(class)
-library(codetools)
-library(cpp11)
-library(datawizard)
-library(HDeconometrics)
-library(jsonlite)
-library(KernSmooth)
-library(lattice)
-library(MASS)
-library(Matrix)
-library(mgcv)
-library(nlme)
-library(nnet)
-library(readxl)
-library(rpart)
-library(sparsevctrs)
-library(survival)
+#library(bit)
+#library(class)
+#library(codetools)
+#library(cpp11)
+#library(datawizard)
+#library(HDeconometrics)
+#library(jsonlite)
+#library(KernSmooth)
+#library(lattice)
+#library(MASS)
+#library(Matrix)
+#library(mgcv)
+#library(nlme)
+#library(nnet)
+#library(readxl)
+#library(rpart)
+#library(sparsevctrs)
+#library(survival)
 
 #remotes::install_github("gabrielrvsc/HDeconometrics")
 library(HDeconometrics)
@@ -238,6 +238,30 @@ get_cv_rmse_hdecon <- function (
 
 }
 
+#4ª Função
+
+get_google_trends_data <- function(keywords, geo = "BR", time = "all", retries = 5, delay = 10) {
+  for (i in 1:retries) {
+    tryCatch({
+      result <- gtrendsR::gtrends(
+        keyword      = keywords,
+        geo          = geo,
+        time         = time,
+        onlyInterest = TRUE
+      )
+      return(result)
+    }, error = function(e) {
+      if (grepl("Status code was not 200", e$message)) {
+        message("Erro 429: Tentando novamente em ", delay, " segundos... (Tentativa ", i, "/", retries, ")")
+        Sys.sleep(delay)  # Adiciona um atraso antes de tentar novamente
+      } else {
+        stop(e)  # Outros erros são interrompidos
+      }
+    })
+  }
+  stop("Número máximo de tentativas atingido. Falha ao obter dados do Google Trends.")
+}
+
 # COLETA DE DADOS ---------------------------------------------------------
 
 # Metadados/códigos de coleta (CSV)
@@ -317,13 +341,12 @@ codes_google <- metadata |>
 
 
 # Coleta de dados do Google Trends
-raw_google <- gtrendsR::gtrends(
-  keyword      = codes_google,
-  geo          = "BR",
-  time         = "all",
-  onlyInterest = TRUE
-)
 
+raw_google <- get_google_trends_data(
+  keywords = codes_google,
+  geo = "BR",
+  time = "all"
+  )
 
 # 5. Dados do Noletim Focus/BCB ----
 
