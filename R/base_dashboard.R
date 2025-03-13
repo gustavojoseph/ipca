@@ -240,7 +240,7 @@ get_cv_rmse_hdecon <- function (
 
 #4ª Função
 
-get_google_trends_data <- function(keywords, geo = "BR", time = "all", retries = 15, delay = 10) {
+get_google_trends_data <- function(keywords, geo = "BR", time = "all", retries = 50, delay = 5) {
   for (i in 1:retries) {
     tryCatch({
       result <- gtrendsR::gtrends(
